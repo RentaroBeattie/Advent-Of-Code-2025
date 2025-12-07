@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -64,49 +65,26 @@ func main() {
 	//Part 2
 	var total2 int = 0
 
-	//cut down colliding ranges to avoid duplicate ids
-	finalIds := make([]Idrange, 0, 200)
-	for i := 0; i < len(idRanges); i++ {
-		//fmt.Printf("%v %v", i, len(finalIds))
-		cur := idRanges[i]
-		//compare to all existing ranges to prevent collisions
-		j := 0
-		newFinal := make([]Idrange, 0, len(finalIds)+1)
-	outer:
-		for j < len(finalIds) {
-			v := finalIds[j]
-			switch {
-			case cur.lower < v.lower && cur.upper <= v.upper: //right collision - trim
-				cur.upper = v.lower - 1
-				newFinal = append(newFinal, v)
-				j++
-			case cur.lower >= v.lower && cur.upper > v.upper: //left collision - trim
-				cur.lower = v.upper + 1
-				newFinal = append(newFinal, v)
-				j++
-			case cur.lower >= v.lower && cur.upper <= v.upper: //inner collision - invalidate current range
-				cur.lower, cur.upper = -1, -1
-				newFinal = append(newFinal, v)
-				break outer
-			case cur.lower < v.lower && cur.upper > v.upper: //super size - remove original
-				j++
-			default:
-				newFinal = append(newFinal, v)
-				j++
-			}
-			//fmt.Printf("%v %v - %v %v\n", cur.lower, cur.upper, v.lower, v.upper)
-		}
+	//Sort ranges by lower bound
+	sort.Slice(idRanges, func(i, j int) bool {
+		return idRanges[i].lower < idRanges[j].lower
+	})
 
-		finalIds = newFinal
-		//if isnt invalid range then append to finalIds
-		if cur.lower != -1 && cur.upper != -1 {
-			finalIds = append(finalIds, cur)
+	//Merge overlapping/adjacent ranges
+	merged := []Idrange{idRanges[0]}
+	for i := 1; i < len(idRanges); i++ {
+		cur := idRanges[i]
+		last := &merged[len(merged)-1]
+
+		if cur.lower <= last.upper+1 { // Overlapping or adjacent
+			last.upper = max(last.upper, cur.upper)
+		} else {
+			merged = append(merged, cur)
 		}
-		//fmt.Print(" Done\n")
 	}
 
-	//increment total2 by each non-colliding ranges (inclusive)
-	for _, v := range finalIds {
+	//Count total IDs in merged ranges
+	for _, v := range merged {
 		total2 += v.upper - v.lower + 1
 	}
 
